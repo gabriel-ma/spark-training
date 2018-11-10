@@ -21,46 +21,43 @@ object NeatTotal {
 
     val spark = SparkSession
       .builder()
-//      .master("local")
+      .master("local")
       .appName("Data Engineering Capability Development - ETL Exercises")
       .getOrCreate()
 
-    val dfOrdersRaw = spark.read
-      .option("delimiter", ";")
+    val productsDF = spark
+      .read
       .option("header", true)
       .option("infer_schema", true)
-      .csv(ordersBucket)
-
-    val dfOrderItemsRaw = spark.read
       .option("delimiter", ";")
-      .option("header", true)
-      .option("infer_schema", true)
-      .csv(orderItemsBucket)
-
-    val dfProductsRaw = spark.read
-      .option("delimiter", ";")
-      .option("header", true)
-      .option("infer_schema", true)
       .csv(productsBucket)
 
-    import org.apache.spark.sql.functions._
-    import spark.implicits._
 
-    val dfOrdersWithItems = dfOrdersRaw
-      .join(dfOrderItemsRaw, "OrderId")
-      .as("ooi")
-      .join(dfProductsRaw.as("p"), col("ooi.ProductId") === col("p.ProductId"))
+    productsDF.show
 
-    val total = dfOrdersWithItems.agg(sum(($"p.Price" - $"ooi.Discount") * $"ooi.Quantity" ).as("total"))
-      .select("total").first().getAs[Double]("total")
+    val orderItemsDF = spark
+      .read
+      .option("header", true)
+      .option("infer_schema", true)
+      .option("delimiter", ";")
+      .csv(orderItemsBucket)
 
-    val locale = new java.util.Locale("pt", "BR")
-    val formatter = java.text.NumberFormat.getCurrencyInstance(locale)
-    val totalFormatted = formatter.format(total)
+    orderItemsDF.show
 
-    log.info(s"O total de vendas foi $totalFormatted")
-    println(s"O total de vendas foi $totalFormatted")
-    //185.670.050.745
-    //cento e oitenta e cinco bilhões, seiscentos e setenta milhões, cinquenta mil e setecentos e quarenta e cinco
+    val productsDFJoinOrderItemsDF = productsDF
+      .join(orderItemsDF, "ProductId")
+        .select("Price", "Discount", "Quantity")
+
+
+    productsDFJoinOrderItemsDF.show(false)
+
+    productsDFJoinOrderItemsDF
+      .selectExpr("sum((Price - Discount) * Quantity)")
+      .as("NEAT TOTAL")
+      .show(false)
+
+
+
+
   }
 }
