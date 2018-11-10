@@ -10,4 +10,4 @@ project/target
 terraform/.terraform
 docker/
 *.csvdata/output/
-Jenkinsfile
+data/exercises/out/
